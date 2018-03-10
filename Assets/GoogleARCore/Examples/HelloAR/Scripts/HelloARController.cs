@@ -80,7 +80,7 @@ namespace GoogleARCore.HelloAR
             {
                 Application.Quit();
             }
-
+	
             _QuitOnConnectionErrors();
 
             // Check that motion tracking is tracking.
@@ -126,24 +126,34 @@ namespace GoogleARCore.HelloAR
 
             // If the player has not touched the screen, we are done with this update.
             Touch touch;
+			TrackableHit hit;
+			TrackableHitFlags raycastFilter = TrackableHitFlags.PlaneWithinPolygon |
+				TrackableHitFlags.FeaturePointWithSurfaceNormal;
+			if((touch = Input.GetTouch(0)).phase == TouchPhase.Moved)
+			{
+
+				if (Frame.Raycast (touch.position.x, touch.position.y, raycastFilter, out hit)) {
+					InsectsController.instance.UpdatePos (hit.Pose.position);
+				}
+			}
             if (Input.touchCount < 1 || (touch = Input.GetTouch(0)).phase != TouchPhase.Began)
             {
                 return;
             }
 
             // Raycast against the location the player touched to search for planes.
-            TrackableHit hit;
-            TrackableHitFlags raycastFilter = TrackableHitFlags.PlaneWithinPolygon |
-                TrackableHitFlags.FeaturePointWithSurfaceNormal;
+           
 
             if (Frame.Raycast(touch.position.x, touch.position.y, raycastFilter, out hit))
             {
+				InsectsController.instance.CreateLine (hit.Pose.position);
+				return;
                 var andyObject = Instantiate(AndyAndroidPrefab, hit.Pose.position, hit.Pose.rotation);
 
                 // Create an anchor to allow ARCore to track the hitpoint as understanding of the physical
                 // world evolves.
-                var anchor = hit.Trackable.CreateAnchor(hit.Pose);
-
+				Anchor anchor = hit.Trackable.CreateAnchor(hit.Pose);
+			
                 // Andy should look at the camera but still be flush with the plane.
                 if ((hit.Flags & TrackableHitFlags.PlaneWithinPolygon) != TrackableHitFlags.None)
                 {
