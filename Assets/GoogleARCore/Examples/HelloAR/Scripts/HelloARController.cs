@@ -133,7 +133,9 @@ namespace GoogleARCore.HelloAR
 			{
 
 				if (Frame.Raycast (touch.position.x, touch.position.y, raycastFilter, out hit)) {
-					InsectsController.instance.UpdatePos (hit.Pose.position);
+					Vector3 pos = hit.Pose.position;
+					pos.y = transform.position.y;
+					InsectsController.instance.UpdatePos (pos);
 				}
 			}
             if (Input.touchCount < 1 || (touch = Input.GetTouch(0)).phase != TouchPhase.Began)
@@ -146,9 +148,11 @@ namespace GoogleARCore.HelloAR
 
             if (Frame.Raycast(touch.position.x, touch.position.y, raycastFilter, out hit))
             {
-				InsectsController.instance.CreateLine (hit.Pose.position);
-				return;
-                var andyObject = Instantiate(AndyAndroidPrefab, hit.Pose.position, hit.Pose.rotation);
+				Vector3 pos = hit.Pose.position;
+				pos.y = transform.position.y;
+				InsectsController.instance.CreateLine (pos);
+			//	return;
+               /* var andyObject = Instantiate(AndyAndroidPrefab, hit.Pose.position, hit.Pose.rotation);
 
                 // Create an anchor to allow ARCore to track the hitpoint as understanding of the physical
                 // world evolves.
@@ -166,7 +170,7 @@ namespace GoogleARCore.HelloAR
                 }
 
                 // Make Andy model a child of the anchor.
-                andyObject.transform.parent = anchor.transform;
+                andyObject.transform.parent = anchor.transform;*/
             }
         }
 

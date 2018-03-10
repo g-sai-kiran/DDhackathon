@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class InsectsController : MonoBehaviour {
 
@@ -9,7 +10,11 @@ public class InsectsController : MonoBehaviour {
 	public static InsectsController instance;
 
 	GameObject currentline;
+	public float speed = 1.0F;
+	private float startTime;
+	private float journeyLength;
 
+	public Slider slide;
 	void Awake()
 	{
 		instance = this;
@@ -21,14 +26,17 @@ public class InsectsController : MonoBehaviour {
 	
 	public void CreateLine(Vector3 pos)
 	{
-		currentline = Instantiate (line, null, false);
-		currentline.transform.position = pos;
+		currentline = Instantiate (line, pos, Quaternion.identity);
+		startTime = Time.time;
+		//currentline.transform.position = pos;
 	}
 
 	public void UpdatePos(Vector3 pos)
 	{
 		if (currentline != null) {
-			currentline.transform.position = pos;
+			float distCovered = (Time.time - startTime) * speed;
+			float fracJourney = distCovered / journeyLength;
+			currentline.transform.position = Vector3.Lerp(currentline.transform.position, pos, fracJourney);
 		}
 	}
 
@@ -36,7 +44,14 @@ public class InsectsController : MonoBehaviour {
 	{
 		currentline = null;
 	}
-		
+
+	public void UpdateWidth()
+	{
+		if (currentline != null) {
+			currentline.GetComponent<TrailRenderer> ().startWidth = slide.value;
+			currentline.GetComponent<TrailRenderer> ().endWidth = slide.value;
+		}
+	}
 		
 
 
