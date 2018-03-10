@@ -49,8 +49,14 @@ namespace GoogleARCore.HelloAR
         /// </summary>
         public void Update()
         {
+            // Do not update if ARCore is not tracking.
+            if (Frame.TrackingState != TrackingState.Tracking)
+            {
+                return;
+            }
+
             // Fill in the data to draw the point cloud.
-            if (Frame.PointCloud.IsUpdatedThisFrame)
+            if (Frame.PointCloud.PointCount > 0 && Frame.PointCloud.IsUpdatedThisFrame)
             {
                 // Copy the point cloud points for mesh verticies.
                 for (int i = 0; i < Frame.PointCloud.PointCount; i++)

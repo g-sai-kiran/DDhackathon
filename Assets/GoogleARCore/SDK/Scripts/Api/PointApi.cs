@@ -31,39 +31,26 @@ namespace GoogleARCoreInternal
     Justification = "Internal")]
     public class PointApi
     {
-        private NativeSession m_NativeSession;
+        private NativeApi m_NativeApi;
 
-        public PointApi(NativeSession nativeSession)
+        public PointApi(NativeApi nativeApi)
         {
-            m_NativeSession = nativeSession;
+            m_NativeApi = nativeApi;
         }
 
-        public Pose GetPose(IntPtr pointHandle)
+        public Pose GetPose(IntPtr planeHandle)
         {
-            var poseHandle = m_NativeSession.PoseApi.Create();
-            ExternApi.ArPoint_getPose(m_NativeSession.SessionHandle, pointHandle, poseHandle);
-            Pose resultPose = m_NativeSession.PoseApi.ExtractPoseValue(poseHandle);
-            m_NativeSession.PoseApi.Destroy(poseHandle);
+            var poseHandle = m_NativeApi.Pose.Create();
+            ExternApi.ArPoint_getPose(m_NativeApi.SessionHandle, planeHandle, poseHandle);
+            Pose resultPose = m_NativeApi.Pose.ExtractPoseValue(poseHandle);
+            m_NativeApi.Pose.Destroy(poseHandle);
             return resultPose;
-        }
-
-        public TrackedPointOrientationMode GetOrientationMode(IntPtr pointHandle)
-        {
-            ApiTrackedPointOrientationMode orientationMode =
-                ApiTrackedPointOrientationMode.Identity;
-            ExternApi.ArPoint_getOrientationMode(m_NativeSession.SessionHandle, pointHandle,
-                ref orientationMode);
-            return orientationMode.ToTrackedPointOrientationMode();
         }
 
         private struct ExternApi
         {
             [DllImport(ApiConstants.ARCoreNativeApi)]
             public static extern void ArPoint_getPose(IntPtr session, IntPtr point, IntPtr out_pose);
-
-            [DllImport(ApiConstants.ARCoreNativeApi)]
-            public static extern void ArPoint_getOrientationMode(IntPtr session, IntPtr point,
-                ref ApiTrackedPointOrientationMode orientationMode);
         }
     }
 }

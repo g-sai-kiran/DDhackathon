@@ -25,10 +25,6 @@ namespace GoogleARCore.HelloAR
     using UnityEngine;
     using UnityEngine.Rendering;
 
-#if UNITY_EDITOR
-    using Input = InstantPreviewInput;
-#endif
-
     /// <summary>
     /// Controls the HelloAR example.
     /// </summary>
@@ -80,26 +76,21 @@ namespace GoogleARCore.HelloAR
             {
                 Application.Quit();
             }
-	
+
             _QuitOnConnectionErrors();
 
             // Check that motion tracking is tracking.
-            if (Session.Status != SessionStatus.Tracking)
+            if (Frame.TrackingState != TrackingState.Tracking)
             {
                 const int lostTrackingSleepTimeout = 15;
                 Screen.sleepTimeout = lostTrackingSleepTimeout;
-                if (!m_IsQuitting && Session.Status.IsValid())
-                {
-                    SearchingForPlaneUI.SetActive(true);
-                }
-
                 return;
             }
 
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
 
             // Iterate over planes found in this frame and instantiate corresponding GameObjects to visualize them.
-            Session.GetTrackables<TrackedPlane>(m_NewPlanes, TrackableQueryFilter.New);
+            Frame.GetPlanes(m_NewPlanes, TrackableQueryFilter.New);
             for (int i = 0; i < m_NewPlanes.Count; i++)
             {
                 // Instantiate a plane visualization prefab and set it to track the new plane. The transform is set to
@@ -111,7 +102,7 @@ namespace GoogleARCore.HelloAR
             }
 
             // Disable the snackbar UI when no planes are valid.
-            Session.GetTrackables<TrackedPlane>(m_AllPlanes);
+            Frame.GetPlanes(m_AllPlanes);
             bool showSearchingUI = true;
             for (int i = 0; i < m_AllPlanes.Count; i++)
             {
@@ -126,51 +117,30 @@ namespace GoogleARCore.HelloAR
 
             // If the player has not touched the screen, we are done with this update.
             Touch touch;
-			TrackableHit hit;
-			TrackableHitFlags raycastFilter = TrackableHitFlags.PlaneWithinPolygon |
-				TrackableHitFlags.FeaturePointWithSurfaceNormal;
-			if((touch = Input.GetTouch(0)).phase == TouchPhase.Moved)
-			{
-
-				if (Frame.Raycast (touch.position.x, touch.position.y, raycastFilter, out hit)) {
-					Vector3 pos = hit.Pose.position;
-					pos.y = transform.position.y;
-					InsectsController.instance.UpdatePos (pos);
-				}
-			}
             if (Input.touchCount < 1 || (touch = Input.GetTouch(0)).phase != TouchPhase.Began)
             {
                 return;
             }
 
             // Raycast against the location the player touched to search for planes.
-           
+            TrackableHit hit;
+            TrackableHitFlags raycastFilter = TrackableHitFlags.PlaneWithinBounds | TrackableHitFlags.PlaneWithinPolygon;
 
-            if (Frame.Raycast(touch.position.x, touch.position.y, raycastFilter, out hit))
+            if (Session.Raycast(touch.position.x, touch.position.y, raycastFilter, out hit))
             {
-				Vector3 pos = hit.Pose.position;
-				pos.y = transform.position.y;
-				InsectsController.instance.CreateLine (pos);
-			//	return;
-               /* var andyObject = Instantiate(AndyAndroidPrefab, hit.Pose.position, hit.Pose.rotation);
+                var andyObject = Instantiate(AndyAndroidPrefab, hit.Pose.position, hit.Pose.rotation);
 
                 // Create an anchor to allow ARCore to track the hitpoint as understanding of the physical
                 // world evolves.
-				Anchor anchor = hit.Trackable.CreateAnchor(hit.Pose);
-			
-                // Andy should look at the camera but still be flush with the plane.
-                if ((hit.Flags & TrackableHitFlags.PlaneWithinPolygon) != TrackableHitFlags.None)
-                {
-                    // Get the camera position and match the y-component with the hit position.
-                    Vector3 cameraPositionSameY = FirstPersonCamera.transform.position;
-                    cameraPositionSameY.y = hit.Pose.position.y;
+                var anchor = hit.Trackable.CreateAnchor(hit.Pose);
 
-                    // Have Andy look toward the camera respecting his "up" perspective, which may be from ceiling.
-                    andyObject.transform.LookAt(cameraPositionSameY, andyObject.transform.up);
-                }
+                // Andy should look at the camera but still be flush with the plane.
+                andyObject.transform.LookAt(FirstPersonCamera.transform);
+                andyObject.transform.rotation = Quaternion.Euler(0.0f,
+                    andyObject.transform.rotation.eulerAngles.y, andyObject.transform.rotation.z);
 
                 // Make Andy model a child of the anchor.
-                andyObject.transform.parent = anchor.transform;*/
+                andyObject.transform.parent = anchor.transform;
             }
         }
 
@@ -185,24 +155,24 @@ namespace GoogleARCore.HelloAR
             }
 
             // Quit if ARCore was unable to connect and give Unity some time for the toast to appear.
-            if (Session.Status == SessionStatus.ErrorPermissionNotGranted)
+            if (Session.ConnectionState == SessionConnectionState.UserRejectedNeededPermission)
             {
                 _ShowAndroidToastMessage("Camera permission is needed to run this application.");
                 m_IsQuitting = true;
-                Invoke("_DoQuit", 0.5f);
+                Invoke("DoQuit", 0.5f);
             }
-            else if (Session.Status.IsError())
+            else if (Session.ConnectionState == SessionConnectionState.ConnectToServiceFailed)
             {
                 _ShowAndroidToastMessage("ARCore encountered a problem connecting.  Please start the app again.");
                 m_IsQuitting = true;
-                Invoke("_DoQuit", 0.5f);
+                Invoke("DoQuit", 0.5f);
             }
         }
 
         /// <summary>
         /// Actually quit the application.
         /// </summary>
-        private void _DoQuit()
+        private void DoQuit()
         {
             Application.Quit();
         }

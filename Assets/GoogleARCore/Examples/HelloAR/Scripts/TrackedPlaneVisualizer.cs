@@ -88,7 +88,7 @@ namespace GoogleARCore.HelloAR
                 Destroy(gameObject);
                 return;
             }
-            else if (m_TrackedPlane.TrackingState != TrackingState.Tracking)
+            else if (Frame.TrackingState != TrackingState.Tracking)
             {
                  m_MeshRenderer.enabled = false;
                  return;
@@ -127,7 +127,7 @@ namespace GoogleARCore.HelloAR
             m_PreviousFrameMeshVertices.Clear();
             m_PreviousFrameMeshVertices.AddRange(m_MeshVertices);
 
-            m_PlaneCenter = m_TrackedPlane.CenterPose.position;
+            m_PlaneCenter = m_TrackedPlane.Position;
 
             int planePolygonCount = m_MeshVertices.Count;
 

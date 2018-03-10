@@ -29,17 +29,17 @@ namespace GoogleARCoreInternal
     Justification = "Internal")]
     public class LightEstimateApi
     {
-        private NativeSession m_NativeSession;
+        private NativeApi m_NativeApi;
 
-        public LightEstimateApi(NativeSession nativeSession)
+        public LightEstimateApi(NativeApi nativeApi)
         {
-            m_NativeSession = nativeSession;
+            m_NativeApi = nativeApi;
         }
 
         public IntPtr Create()
         {
             IntPtr lightEstimateHandle = IntPtr.Zero;
-            ExternApi.ArLightEstimate_create(m_NativeSession.SessionHandle, ref lightEstimateHandle);
+            ExternApi.ArLightEstimate_create(m_NativeApi.SessionHandle, ref lightEstimateHandle);
             return lightEstimateHandle;
         }
 
@@ -51,14 +51,14 @@ namespace GoogleARCoreInternal
         public LightEstimateState GetState(IntPtr lightEstimateHandle)
         {
             ApiLightEstimateState state = ApiLightEstimateState.NotValid;
-            ExternApi.ArLightEstimate_getState(m_NativeSession.SessionHandle, lightEstimateHandle, ref state);
+            ExternApi.ArLightEstimate_getState(m_NativeApi.SessionHandle, lightEstimateHandle, ref state);
             return state.ToLightEstimateState();
         }
 
         public float GetPixelIntensity(IntPtr lightEstimateHandle)
         {
             float pixelIntensity = 0;
-            ExternApi.ArLightEstimate_getPixelIntensity(m_NativeSession.SessionHandle,
+            ExternApi.ArLightEstimate_getPixelIntensity(m_NativeApi.SessionHandle,
                 lightEstimateHandle, ref pixelIntensity);
             return pixelIntensity;
         }

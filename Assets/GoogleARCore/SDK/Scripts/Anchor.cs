@@ -36,7 +36,7 @@ namespace GoogleARCore
 
         private IntPtr m_AnchorNativeHandle = IntPtr.Zero;
 
-        private NativeSession m_NativeSession;
+        private NativeApi m_NativeApi;
 
         private TrackingState m_LastFrameTrackingState = TrackingState.Stopped;
 
@@ -47,21 +47,7 @@ namespace GoogleARCore
         {
             get
             {
-                // TODO (b/73256094): Remove isTracking when fixed.
-                var nativeSession = LifecycleManager.Instance.NativeSession;
-                var isTracking = LifecycleManager.Instance.SessionStatus == SessionStatus.Tracking;
-                if (nativeSession != m_NativeSession)
-                {
-                    // Anchors from another session are considered stopped.
-                    return TrackingState.Stopped;
-                }
-                else if (!isTracking)
-                {
-                    // If there are no new frames coming in we must manually return paused.
-                    return TrackingState.Paused;
-                }
-
-                return m_NativeSession.AnchorApi.GetTrackingState(m_AnchorNativeHandle);
+                return m_NativeApi.Anchor.GetTrackingState(m_AnchorNativeHandle);
             }
         }
 
@@ -69,7 +55,7 @@ namespace GoogleARCore
 
         [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:ElementsMustBeDocumented",
         Justification = "Internal")]
-        public static Anchor AnchorFactory(IntPtr anchorNativeHandle, NativeSession nativeApi, bool isCreate = true)
+        public static Anchor AnchorFactory(IntPtr anchorNativeHandle, NativeApi nativeApi)
         {
             if (anchorNativeHandle == IntPtr.Zero)
             {
@@ -80,23 +66,18 @@ namespace GoogleARCore
             if (s_AnchorDict.TryGetValue(anchorNativeHandle, out result))
             {
                 // Release acquired handle and return cached result
-                result.m_NativeSession.AnchorApi.Release(anchorNativeHandle);
+                result.m_NativeApi.Anchor.Release(anchorNativeHandle);
                 return result;
             }
 
-            if (isCreate)
-            {
-               Anchor anchor = (new GameObject()).AddComponent<Anchor>();
-               anchor.gameObject.name = "Anchor";
-               anchor.m_AnchorNativeHandle = anchorNativeHandle;
-               anchor.m_NativeSession = nativeApi;
-               anchor.Update();
+            Anchor anchor = (new GameObject()).AddComponent<Anchor>();
+            anchor.gameObject.name = "Anchor";
+            anchor.m_AnchorNativeHandle = anchorNativeHandle;
+            anchor.m_NativeApi = nativeApi;
+            anchor.Update();
 
-               s_AnchorDict.Add(anchorNativeHandle, anchor);
-               return anchor;
-            }
-
-            return null;
+            s_AnchorDict.Add(anchorNativeHandle, anchor);
+            return anchor;
         }
 
         //// @endcond
@@ -110,7 +91,7 @@ namespace GoogleARCore
                 return;
             }
 
-            var pose = m_NativeSession.AnchorApi.GetPose(m_AnchorNativeHandle);
+            var pose = m_NativeApi.Anchor.GetPose(m_AnchorNativeHandle);
             transform.position = pose.position;
             transform.rotation = pose.rotation;
 
@@ -135,7 +116,7 @@ namespace GoogleARCore
             }
 
             s_AnchorDict.Remove(m_AnchorNativeHandle);
-            m_NativeSession.AnchorApi.Release(m_AnchorNativeHandle);
+            m_NativeApi.Anchor.Release(m_AnchorNativeHandle);
         }
     }
 }

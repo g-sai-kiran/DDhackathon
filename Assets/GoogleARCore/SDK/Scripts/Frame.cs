@@ -35,9 +35,31 @@ namespace GoogleARCore
     {
         //// @cond EXCLUDE_FROM_DOXYGEN
 
-        private static List<TrackableHit> s_TmpTrackableHitList = new List<TrackableHit>();
+        /// <summary>
+        /// Gets the manager for the static frame.
+        /// </summary>
+        private static FrameManager s_FrameManager;
 
         //// @endcond
+
+        /// <summary>
+        /// Gets the tracking state of the ARCore device for the frame.  If the state is not <c>Tracking</c>,
+        /// the values in the frame may be very inaccurate and generally should not be used.
+        /// Tracking loss is often caused when the camera does not have enough visual features to track (e.g. a white
+        /// wall) or the device is being moved very rapidly.
+        /// </summary>
+        public static TrackingState TrackingState
+        {
+            get
+            {
+                if (s_FrameManager == null)
+                {
+                    return TrackingState.Stopped;
+                }
+
+                return s_FrameManager.GetCameraTrackingState();
+            }
+        }
 
         /// <summary>
         /// Gets the pose of the ARCore device for the frame in Unity world coordinates.
@@ -46,16 +68,12 @@ namespace GoogleARCore
         {
             get
             {
-                var nativeSession = LifecycleManager.Instance.NativeSession;
-                if (nativeSession == null)
+                if (s_FrameManager == null)
                 {
                     return Pose.identity;
                 }
 
-                var cameraHandle = nativeSession.FrameApi.AcquireCamera();
-                Pose result = nativeSession.CameraApi.GetPose(cameraHandle);
-                nativeSession.CameraApi.Release(cameraHandle);
-                return result;
+                return s_FrameManager.GetPose();
             }
         }
 
@@ -66,75 +84,51 @@ namespace GoogleARCore
         {
             get
             {
-                // TODO (b/73256094): Remove isTracking when fixed.
-                var nativeSession = LifecycleManager.Instance.NativeSession;
-                var isTracking = LifecycleManager.Instance.SessionStatus == SessionStatus.Tracking;
-                if (nativeSession == null || !isTracking)
+                if (s_FrameManager == null)
                 {
                     return new LightEstimate(LightEstimateState.NotValid, 0.0f);
                 }
 
-                return nativeSession.FrameApi.GetLightEstimate();
+                return s_FrameManager.GetLightEstimate();
             }
         }
 
         /// <summary>
-        /// Performs a raycast against physical objects being tracked by ARCore.
-        /// Output the closest hit from the camera.
-        /// Note that the Unity's screen coordinate (0, 0)
-        /// starts from bottom left.
+        /// Gets planes ARCore has tracked.
         /// </summary>
-        /// <param name="x">Horizontal touch position in Unity's screen coordiante.</param>
-        /// <param name="y">Vertical touch position in Unity's screen coordiante.</param>
-        /// <param name="filter">A filter bitmask where each {@link TrackableHitFlag} which is set represents a category
-        /// of raycast hits the method call should consider valid.</param>
-        /// <param name="hitResult">A {@link TrackableHit} that will be set if the raycast is successful.</param>
-        /// <returns><c>true</c> if the raycast had a hit, otherwise <c>false</c>.</returns>
-        public static bool Raycast(float x, float y, TrackableHitFlags filter,
-            out TrackableHit hitResult)
+        /// <param name="planes">A reference to a list of TrackedPlane that will be filled by the method call.</param>
+        /// <param name="filter">A filter on the type of data to return.</param>
+        public static void GetPlanes(List<TrackedPlane> planes, TrackableQueryFilter filter = TrackableQueryFilter.All)
         {
-            hitResult = new TrackableHit();
-            var nativeSession = LifecycleManager.Instance.NativeSession;
-            if (nativeSession == null)
+            if (s_FrameManager == null)
             {
-                return false;
+                planes.Clear();
+                return;
             }
 
-            // Note that the Unity's screen coordinate (0, 0) starts from bottom left.
-            bool foundHit = nativeSession.HitTestApi.Raycast(nativeSession.FrameHandle, x, Screen.height - y, filter,
-                s_TmpTrackableHitList, true);
+            s_FrameManager.GetTrackables<TrackedPlane>(planes, filter);
+        }
 
-            if (foundHit && s_TmpTrackableHitList.Count != 0)
-            {
-                hitResult = s_TmpTrackableHitList[0];
-            }
+        //// @cond EXCLUDE_FROM_DOXYGEN
 
-            return foundHit;
+        /// <summary>
+        /// Initializes the static Frame.
+        /// </summary>
+        /// <param name="frameManager">The manager for the static frame.</param>
+        public static void Initialize(FrameManager frameManager)
+        {
+            Frame.s_FrameManager = frameManager;
         }
 
         /// <summary>
-        /// Performs a raycast against physical objects being tracked by ARCore.
-        /// Output all hits from the camera.
-        /// Note that the Unity's screen coordinate (0, 0)
-        /// starts from bottom left.
+        /// Cleans up the static frame.
         /// </summary>
-        /// <param name="x">Horizontal touch position in Unity's screen coordiante.</param>
-        /// <param name="y">Vertical touch position in Unity's screen coordiante.</param>
-        /// <param name="filter">A filter bitmask where each {@link TrackableHitFlag} which is set represents a category
-        /// of raycast hits the method call should consider valid.</param>
-        /// <param name="hitResults">A list of {@link TrackableHit} that will be set if the raycast is successful.</param>
-        /// <returns><c>true</c> if the raycast had a hit, otherwise <c>false</c>.</returns>
-        public static bool RaycastAll(float x, float y, TrackableHitFlags filter, List<TrackableHit> hitResults)
+        public static void Destroy()
         {
-            hitResults.Clear();
-            var nativeSession = LifecycleManager.Instance.NativeSession;
-            if (nativeSession == null)
-            {
-                return false;
-            }
-
-            return nativeSession.HitTestApi.Raycast(nativeSession.FrameHandle, x, Screen.height - y, filter, hitResults, true);
+            s_FrameManager = null;
         }
+
+        //// @endcond
 
         /// <summary>
         /// Container for state related to the ARCore camera image metadata for the Frame.
@@ -148,19 +142,10 @@ namespace GoogleARCore
             /// <param name="metadataTag">Metadata type.</param>
             /// <param name="outMetadataList">Result list of the requested values.</param>
             /// <returns><c>true</c> if getting metadata value successfully, otherwise <c>false</c>.</returns>
-            public static bool TryGetValues(CameraMetadataTag metadataTag, List<CameraMetadataValue> outMetadataList)
+            public static bool TryGetValues(CameraMetadataTag metadataTag,
+                    List<CameraMetadataValue> outMetadataList)
             {
-                outMetadataList.Clear();
-                var nativeSession = LifecycleManager.Instance.NativeSession;
-                if (nativeSession == null)
-                {
-                    return false;
-                }
-
-                var metadataHandle = nativeSession.FrameApi.AcquireImageMetadata();
-                var isSuccess = nativeSession.CameraMetadataApi.TryGetValues(metadataHandle, metadataTag, outMetadataList);
-                nativeSession.CameraMetadataApi.Release(metadataHandle);
-                return isSuccess;
+                return Frame.s_FrameManager.CameraMetadataManager.TryGetValues(metadataTag, outMetadataList);
             }
 
             /// <summary>
@@ -170,18 +155,7 @@ namespace GoogleARCore
             /// <returns><c>true</c> if getting tags successfully, otherwise <c>false</c>.</returns>
             public static bool GetAllCameraMetadataTags(List<CameraMetadataTag> outMetadataTags)
             {
-                outMetadataTags.Clear();
-                var nativeSession = LifecycleManager.Instance.NativeSession;
-                if (nativeSession == null)
-                {
-                    return false;
-                }
-
-                var metadataHandle = nativeSession.FrameApi.AcquireImageMetadata();
-                var isSuccess = nativeSession.CameraMetadataApi.GetAllCameraMetadataTags(metadataHandle,
-                    outMetadataTags);
-                nativeSession.CameraMetadataApi.Release(metadataHandle);
-                return isSuccess;
+                return Frame.s_FrameManager.CameraMetadataManager.GetAllCameraMetadataTags(outMetadataTags);
             }
         }
 
@@ -199,13 +173,12 @@ namespace GoogleARCore
             {
                 get
                 {
-                    var nativeSession = LifecycleManager.Instance.NativeSession;
-                    if (nativeSession == null)
+                    if (Frame.s_FrameManager == null)
                     {
                         return false;
                     }
 
-                    return nativeSession.IsPointCloudNew;
+                    return Frame.s_FrameManager.PointCloudManager.GetIsUpdatedThisFrame();
                 }
             }
 
@@ -216,15 +189,12 @@ namespace GoogleARCore
             {
                 get
                 {
-                    // TODO (b/73256094): Remove isTracking when fixed.
-                    var nativeSession = LifecycleManager.Instance.NativeSession;
-                    var isTracking = LifecycleManager.Instance.SessionStatus == SessionStatus.Tracking;
-                    if (nativeSession == null || !isTracking)
+                    if (Frame.s_FrameManager == null)
                     {
                         return 0;
                     }
 
-                     return nativeSession.PointCloudApi.GetNumberOfPoints(nativeSession.PointCloudHandle);
+                     return Frame.s_FrameManager.PointCloudManager.GetPointCount();
                 }
             }
 
@@ -235,13 +205,12 @@ namespace GoogleARCore
             /// <returns>The point from the point cloud at <c>index</c>.</returns>
             public static Vector3 GetPoint(int index)
             {
-                var nativeSession = LifecycleManager.Instance.NativeSession;
-                if (nativeSession == null)
+                if (Frame.s_FrameManager == null)
                 {
                     return Vector3.zero;
                 }
 
-                return nativeSession.PointCloudApi.GetPoint(nativeSession.PointCloudHandle, index);
+                return Frame.s_FrameManager.PointCloudManager.GetPoint(index);
             }
 
             /// <summary>
@@ -250,19 +219,18 @@ namespace GoogleARCore
             /// <param name="points">A list that will be filled with point cloud points by this method call.</param>
             public static void CopyPoints(List<Vector4> points)
             {
-                points.Clear();
-                var nativeSession = LifecycleManager.Instance.NativeSession;
-                if (nativeSession == null)
+                if (Frame.s_FrameManager == null)
                 {
+                    points.Clear();
                     return;
                 }
 
-                nativeSession.PointCloudApi.CopyPoints(nativeSession.PointCloudHandle, points);
+                Frame.s_FrameManager.PointCloudManager.CopyPoints(points);
             }
         }
 
         /// <summary>
-        /// Container for state related to the ARCore camera for the frame.
+        /// Container for state related to the ARCore camera for the Frame.
         /// </summary>
         public static class CameraImage
         {
@@ -273,7 +241,12 @@ namespace GoogleARCore
             {
                 get
                 {
-                    return LifecycleManager.Instance.BackgroundTexture;
+                    if (Frame.s_FrameManager == null)
+                    {
+                        return null;
+                    }
+
+                    return Frame.s_FrameManager.GetCameraTexture();
                 }
             }
 
@@ -287,35 +260,30 @@ namespace GoogleARCore
                     ApiDisplayUvCoords displayUvCoords = new ApiDisplayUvCoords(new Vector2(0, 1),
                         new Vector2(1, 1), new Vector2(0, 0), new Vector2(1, 0));
 
-                    var nativeSession = LifecycleManager.Instance.NativeSession;
-                    if (nativeSession == null || Texture == null)
+                    if (Frame.s_FrameManager == null)
                     {
                         return displayUvCoords;
                     }
 
-                    nativeSession.FrameApi.TransformDisplayUvCoords(ref displayUvCoords);
+                    Frame.s_FrameManager.TransformDisplayUvCoords(ref displayUvCoords);
                     return displayUvCoords;
                 }
             }
 
             /// <summary>
-            /// Gets the projection matrix for the frame.
+            /// Gets the current projection matrix for this frame.
+            /// <param name=“nearClipping”>The near clipping plane for the projection matrix.</param>
+            /// <param name="farClipping”>The far clipping plane for the projection matrix.</param>
+            /// <returns>The projection matrix for this frame.</returns>
             /// </summary>
-            /// <param name="nearClipping">The near clipping plane for the projection matrix.</param>
-            /// <param name="farClipping">The far clipping plane for the projection matrix.</param>
-            /// <returns>The projection matrix for the frame.</returns>
             public static Matrix4x4 GetCameraProjectionMatrix(float nearClipping, float farClipping)
             {
-                var nativeSession = LifecycleManager.Instance.NativeSession;
-                if (nativeSession == null || Texture == null)
+                if (Frame.s_FrameManager == null)
                 {
                     return Matrix4x4.identity;
                 }
 
-                var cameraHandle = nativeSession.FrameApi.AcquireCamera();
-                var result = nativeSession.CameraApi.GetProjectionMatrix(cameraHandle, nearClipping, farClipping);
-                nativeSession.CameraApi.Release(cameraHandle);
-                return result;
+                return Frame.s_FrameManager.GetCameraProjectionMatrix(nearClipping, farClipping);
             }
         }
     }

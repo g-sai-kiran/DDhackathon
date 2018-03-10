@@ -31,11 +31,11 @@ namespace GoogleARCoreInternal
     Justification = "Internal")]
     public class CameraMetadataApi
     {
-        private NativeSession m_NativeSession;
+        private NativeApi m_NativeApi;
 
-        public CameraMetadataApi(NativeSession nativeSession)
+        public CameraMetadataApi(NativeApi nativeApi)
         {
-            m_NativeSession = nativeSession;
+            m_NativeApi = nativeApi;
         }
 
         public void Release(IntPtr arCameraMetadataHandle)
@@ -47,7 +47,7 @@ namespace GoogleARCoreInternal
             CameraMetadataTag tag, List<CameraMetadataValue> resultList)
         {
             IntPtr ndkMetadataHandle = IntPtr.Zero;
-            ExternApi.ArImageMetadata_getNdkCameraMetadata(m_NativeSession.SessionHandle,
+            ExternApi.ArImageMetadata_getNdkCameraMetadata(m_NativeApi.SessionHandle,
                 cameraMetadataHandle, ref ndkMetadataHandle);
 
             resultList.Clear();
@@ -111,7 +111,7 @@ namespace GoogleARCoreInternal
         public bool GetAllCameraMetadataTags(IntPtr cameraMetadataHandle, List<CameraMetadataTag> resultList)
         {
             IntPtr ndkMetadataHandle = IntPtr.Zero;
-            ExternApi.ArImageMetadata_getNdkCameraMetadata(m_NativeSession.SessionHandle,
+            ExternApi.ArImageMetadata_getNdkCameraMetadata(m_NativeApi.SessionHandle,
                 cameraMetadataHandle, ref ndkMetadataHandle);
 
             IntPtr tagsHandle = IntPtr.Zero;

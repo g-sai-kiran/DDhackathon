@@ -31,16 +31,16 @@ namespace GoogleARCoreInternal
     Justification = "Internal")]
     public class SessionApi
     {
-        private NativeSession m_NativeSession;
+        private NativeApi m_NativeApi;
 
-        public SessionApi(NativeSession nativeSession)
+        public SessionApi(NativeApi nativeApi)
         {
-            m_NativeSession = nativeSession;
+            m_NativeApi = nativeApi;
         }
 
         public void ReportEngineType()
         {
-            ExternApi.ArSession_reportEngineType(m_NativeSession.SessionHandle, "Unity",
+            ExternApi.ArSession_reportEngineType(m_NativeApi.SessionHandle, "Unity",
                 Application.unityVersion);
         }
 
@@ -54,49 +54,49 @@ namespace GoogleARCoreInternal
             }
             else
             {
-                configHandle = m_NativeSession.SessionConfigApi.Create();
-                m_NativeSession.SessionConfigApi.UpdateApiConfigWithArCoreSessionConfig(configHandle, config);
+                configHandle = m_NativeApi.SessionConfig.Create();
+                m_NativeApi.SessionConfig.UpdateApiConfigWithArCoreSessionConfig(configHandle, config);
             }
 
-            ApiArStatus ret = ExternApi.ArSession_checkSupported(m_NativeSession.SessionHandle, configHandle);
-            m_NativeSession.SessionConfigApi.Destroy(configHandle);
+            ApiArStatus ret = ExternApi.ArSession_checkSupported(m_NativeApi.SessionHandle, configHandle);
+            m_NativeApi.SessionConfig.Destroy(configHandle);
             return ret;
         }
 
         public bool SetConfiguration(ARCoreSessionConfig sessionConfig)
         {
-            IntPtr configHandle = m_NativeSession.SessionConfigApi.Create();
-            m_NativeSession.SessionConfigApi.UpdateApiConfigWithArCoreSessionConfig(configHandle, sessionConfig);
+            IntPtr configHandle = m_NativeApi.SessionConfig.Create();
+            m_NativeApi.SessionConfig.UpdateApiConfigWithArCoreSessionConfig(configHandle, sessionConfig);
 
-            bool ret = ExternApi.ArSession_configure(m_NativeSession.SessionHandle, configHandle) == 0;
-            m_NativeSession.SessionConfigApi.Destroy(configHandle);
+            bool ret = ExternApi.ArSession_configure(m_NativeApi.SessionHandle, configHandle) == 0;
+            m_NativeApi.SessionConfig.Destroy(configHandle);
 
             return ret;
         }
 
         public void GetAllTrackables(List<Trackable> trackables)
         {
-            IntPtr listHandle = m_NativeSession.TrackableListApi.Create();
-            ExternApi.ArSession_getAllTrackables(m_NativeSession.SessionHandle, ApiTrackableType.BaseTrackable, listHandle);
+            IntPtr listHandle = m_NativeApi.TrackableList.Create();
+            ExternApi.ArSession_getAllTrackables(m_NativeApi.SessionHandle, ApiTrackableType.BaseTrackable, listHandle);
 
             trackables.Clear();
-            int count = m_NativeSession.TrackableListApi.GetCount(listHandle);
+            int count = m_NativeApi.TrackableList.GetCount(listHandle);
             for (int i = 0; i < count; i++)
             {
-                IntPtr trackableHandle = m_NativeSession.TrackableListApi.AcquireItem(listHandle, i);
-                trackables.Add(m_NativeSession.TrackableFactory(trackableHandle));
+                IntPtr trackableHandle = m_NativeApi.TrackableList.AcquireItem(listHandle, i);
+                trackables.Add(m_NativeApi.TrackableFactory(trackableHandle));
             }
 
-            m_NativeSession.TrackableListApi.Destroy(listHandle);
+            m_NativeApi.TrackableList.Destroy(listHandle);
         }
 
         public Anchor CreateAnchor(Pose pose)
         {
-            IntPtr poseHandle = m_NativeSession.PoseApi.Create(pose);
+            IntPtr poseHandle = m_NativeApi.Pose.Create(pose);
             IntPtr anchorHandle = IntPtr.Zero;
-            ExternApi.ArSession_acquireNewAnchor(m_NativeSession.SessionHandle, poseHandle, ref anchorHandle);
-            var anchorResult = Anchor.AnchorFactory(anchorHandle, m_NativeSession);
-            m_NativeSession.PoseApi.Destroy(poseHandle);
+            ExternApi.ArSession_acquireNewAnchor(m_NativeApi.SessionHandle, poseHandle, ref anchorHandle);
+            var anchorResult = Anchor.AnchorFactory(anchorHandle, m_NativeApi);
+            m_NativeApi.Pose.Destroy(poseHandle);
 
             return anchorResult;
         }
@@ -125,7 +125,7 @@ namespace GoogleARCoreInternal
                     break;
             }
 
-            ExternApi.ArSession_setDisplayGeometry(m_NativeSession.SessionHandle, androidOrientation, width, height);
+            ExternApi.ArSession_setDisplayGeometry(m_NativeApi.SessionHandle, androidOrientation, width, height);
         }
 
         private struct ExternApi

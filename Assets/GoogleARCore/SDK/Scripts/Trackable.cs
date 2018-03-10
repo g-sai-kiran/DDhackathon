@@ -40,7 +40,7 @@ namespace GoogleARCore
         /// <summary>
         /// The native api for ARCore.
         /// </summary>
-        protected NativeSession m_NativeSession;
+        protected NativeApi m_NativeApi;
 
         /// <summary>
         /// Constructs a new ARCore Trackable.
@@ -53,16 +53,16 @@ namespace GoogleARCore
         /// Constructs a new ARCore Trackable.
         /// </summary>
         /// <param name="trackableNativeHandle">The native handle.</param>
-        /// <param name="nativeSession">The native session.</param>
-        protected Trackable(IntPtr trackableNativeHandle, NativeSession nativeSession)
+        /// <param name="nativeApi">The native api.</param>
+        protected Trackable(IntPtr trackableNativeHandle, NativeApi nativeApi)
         {
             m_TrackableNativeHandle = trackableNativeHandle;
-            m_NativeSession = nativeSession;
+            m_NativeApi = nativeApi;
         }
 
         ~Trackable()
         {
-            m_NativeSession.TrackableApi.Release(m_TrackableNativeHandle);
+            m_NativeApi.Trackable.Release(m_TrackableNativeHandle);
         }
 
         //// @endcond
@@ -75,21 +75,7 @@ namespace GoogleARCore
         {
             get
             {
-                // TODO (b/73256094): Remove isTracking when fixed.
-                var nativeSession = LifecycleManager.Instance.NativeSession;
-                var isTracking = LifecycleManager.Instance.SessionStatus == SessionStatus.Tracking;
-                if (nativeSession != m_NativeSession)
-                {
-                    // Trackables from another session are considered stopped.
-                    return TrackingState.Stopped;
-                }
-                else if (!isTracking)
-                {
-                    // If there are no new frames coming in we must manually return paused.
-                    return TrackingState.Paused;
-                }
-
-                return m_NativeSession.TrackableApi.GetTrackingState(m_TrackableNativeHandle);
+                return m_NativeApi.Trackable.GetTrackingState(m_TrackableNativeHandle);
             }
         }
 
@@ -104,13 +90,13 @@ namespace GoogleARCore
         public virtual Anchor CreateAnchor(Pose pose)
         {
             IntPtr anchorHandle;
-            if (!m_NativeSession.TrackableApi.AcquireNewAnchor(m_TrackableNativeHandle, pose, out anchorHandle))
+            if (!m_NativeApi.Trackable.AcquireNewAnchor(m_TrackableNativeHandle, pose, out anchorHandle))
             {
                 Debug.Log("Failed to create anchor on trackable.");
                 return null;
             }
 
-            return Anchor.AnchorFactory(anchorHandle, m_NativeSession);
+            return Anchor.AnchorFactory(anchorHandle, m_NativeApi);
         }
 
         /// <summary>
@@ -119,7 +105,7 @@ namespace GoogleARCore
         /// <param name="anchors">A list of anchors to be filled by the method.</param>
         public virtual void GetAllAnchors(List<Anchor> anchors)
         {
-            m_NativeSession.TrackableApi.GetAnchors(m_TrackableNativeHandle, anchors);
+            m_NativeApi.Trackable.GetAnchors(m_TrackableNativeHandle, anchors);
         }
     }
 }
