@@ -14,6 +14,9 @@ public class AnchorManger : MonoBehaviour {
 	public Transform point;
 	public Camera camera;
 	public GameObject currentobject;
+
+
+
 	// Update is called once per frame
 	void Update () {
 		//Debug.Log ("positiom="+	transform.position);
@@ -41,6 +44,9 @@ public class AnchorManger : MonoBehaviour {
 			} else {
 				currentobject = Instantiate (anchorPrefab, ppos, Quaternion.identity, null);
 			}
+
+
+
 		//	Instantiate (unanchorprefab, anchor.transform.position, anchor.transform.rotation, anchor.transform);
 			//lastAnchorPosition = anchor.transform.position;
 			//lastanchorrotation = anchor.transform.rotation;
@@ -69,6 +75,10 @@ public class AnchorManger : MonoBehaviour {
 			//lastanchorrotation = anchor.transform.rotation;
 		}
 		if (Input.GetMouseButtonUp (0)) {
+			ParticleSystem.EmissionModule pEmission = currentobject.GetComponent<ParticleSystem> ().emission;
+			pEmission.enabled = false;
+		//	pMain.loop = false;
+		//	Destroy (pParticle);
 			currentobject = null;
 		}
 	
